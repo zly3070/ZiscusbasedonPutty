@@ -1,3 +1,30 @@
+/**
+ * ============================================================================
+ * worker/src/mod-log.ts —— 操作审计日志（写 + 读）
+ * ============================================================================
+ *
+ * 【为什么一个评论系统需要审计日志】
+ *   管理动作是**破坏性且不可撤销**的（删评论、标垃圾、封 IP）。
+ *   出问题时你需要能回答："这条评论是谁在什么时候删的？为什么？"
+ *   另外 AI 的自动判定也要留痕 —— 否则你无法评估 AI 的准确率。
+ *
+ * 【写入点遍布全项目】logModAction() 被这些地方调用：
+ *   · submit.ts         AI 判定结果（actor: 'ai'）
+ *   · comments-api.ts   人工审核动作（actor: 'admin'）
+ *   · admin-api.ts      导入、批量批准、封禁等
+ *   · debounce.ts       重建成功/失败（rebuild_dispatched / rebuild_failed）
+ *
+ * 【⚠ 日志和评论没有外键约束】
+ *   schema.sql 里 mod_log.comment_id 是普通列，没有 FOREIGN KEY。
+ *   所以**删掉评论后日志仍然保留**，但 comment_id 变成悬空引用。
+ *   这是有意的设计（审计要留痕），代价是查询时不能盲目 join。
+ *
+ * 【actor 的三种取值】
+ *   'admin'  人工在面板/CLI 操作
+ *   'ai'     Workers AI 自动判定
+ *   'system' 系统自动行为（比如防抖触发的重建）
+ *   ★ 想做"只看人工操作"或"评估 AI 准确率"，就按 actor 过滤。
+ */
 import { requireAuth } from "./auth.js";
 import type { Env } from "./types.js";
 

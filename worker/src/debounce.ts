@@ -1,3 +1,61 @@
+/**
+ * ============================================================================
+ * worker/src/debounce.ts —— 站点重建的防抖与触发
+ * ============================================================================
+ *
+ * 【这个文件解决的现实问题】
+ *
+ *   静态站的评论靠"重建"才更新。而重建的代价很高：
+ *     · 触发 GitHub Actions（有配额，公有仓库免费但有并发限制）
+ *     · 跑一遍完整的 SSG 构建（可能几十秒到几分钟）
+ *     · 部署到 CDN
+ *
+ *   如果没有防抖，在管理面板里**批量批准 20 条评论 = 触发 20 次重建**，
+ *   20 个 Actions 排队跑，既慢又浪费。
+ *
+ *   所以：**30 秒内的多次重建请求合并成一次。**
+ *
+ * 【防抖怎么实现的（关键在"原子性"）】
+ *
+ *   Cloudflare Worker 是【多实例并发】的。如果用"读时间戳 → 判断 → 写时间戳"，
+ *   两个并发请求会同时读到旧值、同时决定"我该触发"，于是发出两次 dispatch。
+ *
+ *   解法是把"判断"和"抢占"合成一条原子 SQL（compare-and-swap）：
+ *
+ *     UPDATE meta SET value = <now>
+ *      WHERE key = 'last_rebuild' AND CAST(value AS INTEGER) < <now - windowMs>
+ *
+ *   · 更新成功（changes > 0）→ 说明窗口已过期，**我抢到了**，去触发
+ *   · 更新失败（changes == 0）→ 说明别人刚抢过，**我跳过**（返回 debounced）
+ *   · 还没有那一行（第一次重建）→ 用 `INSERT OR IGNORE` 抢占 ——
+ *     IGNORE 保证并发时**恰好一个**调用者插入成功
+ *
+ *   ⚠ 这套 CAS 是整个防抖正确性的核心。★ 改动时务必保持"判断+写入"在
+ *     同一条语句里，拆成两步就会重新引入竞态。
+ *
+ * 【★ 最值得学习的设计原则：这个函数【从不抛异常】】
+ *
+ *   源码注释写得很明确：
+ *     "**Never fails the caller** — a comment submission must succeed
+ *      even if GitHub is down"
+ *
+ *   也就是说：访客发评论时，即使 GitHub 完全挂了、token 过期了、
+ *   网络超时了，**评论依然要写入成功**，只是站点晚点重建而已。
+ *
+ *   代价是失败会被"吞掉"，所以它做了三件事保证可观测性：
+ *     ① 结果写进 `meta.last_rebuild_result` → 管理面板显示红/绿卡片
+ *     ② 真实尝试记进 mod_log（rebuild_dispatched / rebuild_failed）
+ *     ③ 失败打 console.error → `wrangler tail` 能看到
+ *     ④ 失败时【释放防抖窗口】，让下一次批准能立刻重试
+ *        （而不是傻等 30 秒）
+ *
+ * 【⚠ GITHUB_TOKEN 会过期，这是最常见的线上故障】
+ *   README 里专门有一节讲这个：细粒度 PAT 最多一年、默认更短。
+ *   token 一死，评论照收但**每次重建都被 GitHub 401 拒绝**，
+ *   站点停止更新直到你用 `npx ziscus rebuild` 手动重建。
+ *   ★ 症状识别：面板上"Rebuild pipeline"卡片变红、
+ *     mod_log 里出现 rebuild_failed、HTTP 401。
+ */
 import type { Env, RebuildResult } from "./types.js";
 import { logModAction } from "./mod-log.js";
 
