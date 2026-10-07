@@ -1,14 +1,40 @@
 /**
- * HTML text escaping — the single source of truth for how comment text is
- * stored and rendered.
+ * ============================================================================
+ * worker/src/html.ts —— HTML 转义工具（全项目"文本怎么存、怎么渲染"的唯一真相）
+ * ============================================================================
  *
- * Storage invariant: `author` and `body` are persisted HTML-escaped (see
- * submit.ts / admin-api.ts import). Every renderer therefore goes through
- * `escHtml(unescapeHtml(stored))` — idempotent, escapes exactly once, and stays
- * safe even if a row somehow bypassed the invariant.
+ * 【这个项目最容易被误解、也最值得先搞懂的一条规则】
+ *
+ *   数据库里存的 author / body 是【已经转义过的】。
+ *   也就是说，评论者输入  <b>hi</b>
+ *   数据库里存的是        &lt;b&gt;hi&lt;/b&gt;
+ *
+ *   这带来两个后果：
+ *     ① 存进去的就是"安全"的，即使某个渲染路径忘了转义也不会 XSS
+ *        （纵深防御：把安全保证放在写入端）
+ *     ② 但渲染时你【不能再转义一次】，否则用户会看到字面的
+ *        "&lt;b&gt;hi&lt;/b&gt;"。所以每个渲染器都要写成：
+ *
+ *            escHtml(unescapeHtml(stored))
+ *
+ *        先还原成人读的文本，再转义一次输出。这个组合是【幂等】的，
+ *        无论存的值是"原始"还是"已转义"的，结果都正确。
+ *
+ * 【⚠ 存储不变量（storage invariant）】
+ *   往 comments 表写数据的地方【必须】先调 escHtml()：
+ *     - submit.ts        （访客提交）
+ *     - admin-api.ts     （/admin/import 导入）
+ *   如果以后你自己加了写入路径（比如从别的系统同步评论），
+ *   **一定要先转义再入库**，否则整条渲染链的安全前提就破了。
+ *
+ * ★ 自定义提示：
+ *   - 想支持 Markdown / 少量 HTML 标签 → 不要改这两个函数，
+ *     应该在"转义之后"再经过一个 Markdown 渲染器（或在渲染端做白名单）。
+ *     直接放开转义会立刻引入 XSS。
+ *   - 想改评论里的换行处理 → 也是渲染端的事，别动这里。
  */
 
-/** Escape the five HTML-significant characters and strip NUL bytes. Inverse: `unescapeHtml`. */
+/** 转义 5 个 HTML 敏感字符，并剔除 NUL 字节。逆函数：`unescapeHtml`。 */
 export function escHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -20,8 +46,35 @@ export function escHtml(s: string): string {
 }
 
 /**
- * Exact inverse of `escHtml`. `&amp;` is decoded last so that a stored
- * `&amp;lt;` (a commenter who literally typed `&lt;`) becomes `&lt;`, not `<`.
+ * `escHtml` 的精确逆运算。
+ *
+ * ⚠ 【`&amp;` 必须放在最后替换 —— 顺序真的会影响结果】
+ *
+ *   人家用脚本穷举了 5 条规则的【全部 120 种排列】验证过（见分支根目录的
+ *   `_verify-order.mjs`），结论：
+ *
+ *     输入 "&amp;lt;"（评论者字面输入的 &lt;，被 escHtml 转义后的样子）
+ *       · &amp; 最后解 → "&lt;"   ← 正确，正是评论者想显示的文字
+ *       · &amp; 最先解 → "<"     ← 错误，直接把内容吃掉了一层
+ *
+ *     全部 120 种排列里，恰好 60 种得到 "&lt;"、60 种得到 "<"，
+ *     而且分界线就是【&amp; 是不是在 &lt; 之后处理】。
+ *
+ *   为什么会这样：
+ *     &amp;lt;  的字符序列是   & a m p ; l t ;
+ *     若先解 &amp;  →  变成  &lt;  →  再被 &lt; 规则命中 → "<"    ❌
+ *     若最后解 &amp; →  "&lt;" 全程不匹配任何规则 → 最后才变 "&lt;"  ✅
+ *
+ *   ★ 实测还发现一件事：`&amp;lt;` 里其实【不含】`&lt;` 子串
+ *     （`indexOf("&lt;")` 返回 -1，因为 l 前面是 ; 不是 &），
+ *     所以"最后解 &amp;"是在【其他规则都不动它】的前提下才成立的。
+ *     两条规则是配合关系，别单独改动其中一条。
+ *
+ * ⚠ 另一条纪律：【只能调用一次】
+ *   `unescapeHtml` 是非幂等的。调两次会连续剥掉两层实体：
+ *     "&amp;amp;" --第1次--> "&amp;" --第2次--> "&"   ← 用户内容被吞
+ *   所有渲染器必须严格写成 `escHtml(unescapeHtml(stored))`，
+ *   不要在里面重复调用。
  */
 export function unescapeHtml(s: string): string {
   return s
