@@ -154,42 +154,51 @@ function addSecurityHeaders(res: Response, isAdmin: boolean): Response {
  * 路由分发。整个 Worker 的 URL 契约都在这一个函数里。
  *
  * 【完整路由表】（★ = 需要 Authorization Bearer 鉴权）
+ * ⚠ 本表已逐条对照下方代码核对（含 index.test.ts 使用的路径）。
+ *   早先版本的表写错了 /admin/bulk-approve、/admin/gdpr-delete、POST /admin/unban，
+ *   与代码不符 —— 已修正。**改路由时请同步更新这张表。**
  *
- *   方法   路径                    作用                              处理函数
- *   ──────────────────────────────────────────────────────────────────────────
- *   OPTIONS 任意                    CORS 预检，直接 204                内联（见下）
- *   POST   /submit                 提交评论                            submit.ts
- *   GET    /submit                 误用（浏览器刷新）→ 302 回首页       内联
- *   GET    /comments/:slug         取已批准评论（JSON，供 SSG 构建用）   comments-api.ts
- *   DELETE /comments/:id       ★   永久删除                            comments-api.ts
- *   POST   /approve/:id        ★   批准                                comments-api.ts
- *   POST   /reject/:id         ★   拒绝                                comments-api.ts
- *   POST   /spam/:id           ★   标记垃圾                            comments-api.ts
- *   POST   /unapprove/:id      ★   撤销批准                            comments-api.ts
- *   GET    /mod-log            ★   操作审计日志                        mod-log.ts
- *   GET    /admin/dashboard    ★   管理面板（服务端渲染 HTML）          dashboard.ts
- *   GET    /admin/stats        ★   统计数字                            admin-api.ts
- *   GET    /admin/comments     ★   评论列表（分页/筛选）                 admin-api.ts
- *   GET    /admin/mode         ★   读"评论开关/待审模式"                 admin-api.ts
- *   POST   /admin/mode         ★   改模式                              admin-api.ts
- *   POST   /admin/ban          ★   封 IP                               admin-api.ts
- *   POST   /admin/unban        ★   解封                                admin-api.ts
- *   GET    /admin/bans         ★   封禁列表                            admin-api.ts
- *   POST   /admin/bulk-approve ★   批量批准                            admin-api.ts
- *   GET    /admin/export       ★   导出（备份/迁移用）                   admin-api.ts
- *   POST   /admin/import       ★   导入                                admin-api.ts
- *   POST   /admin/gdpr-delete  ★   按 IP 删除（GDPR 被遗忘权）           admin-api.ts
- *   POST   /admin/rebuild      ★   手动触发重建                         admin-api.ts
- *   其它   任意                    静态资源（若有 ASSETS）+ 即时评论预览  html-rewriter.ts
+ *   方法   路径                      作用                             处理函数
+ *   ────────────────────────────────────────────────────────────────────────────
+ *   OPTIONS 任意                     CORS 预检，直接 204               内联
+ *   POST   /submit                   提交评论                          submit.ts
+ *   GET    /submit                   误用（浏览器刷新）→ 302 回首页     内联
+ *   GET    /comments/:slug           取已批准评论（JSON，供 SSG 构建）   comments-api.ts
+ *   DELETE /comments/:id         ★   永久删除                          comments-api.ts
+ *   POST   /approve/:id          ★   批准                              comments-api.ts
+ *   POST   /reject/:id           ★   拒绝                              comments-api.ts
+ *   POST   /spam/:id             ★   标记垃圾                          comments-api.ts
+ *   POST   /unapprove/:id        ★   撤销批准                          comments-api.ts
+ *   GET    /admin/dashboard      ★   管理面板（服务端渲染 HTML）         dashboard.ts
+ *   GET    /admin/stats          ★   统计数字                          admin-api.ts
+ *   GET    /admin/comments       ★   评论列表（分页/筛选）               admin-api.ts
+ *   GET    /admin/mode           ★   读评论开关/待审模式                 admin-api.ts
+ *   POST   /admin/mode           ★   改模式                            admin-api.ts
+ *   POST   /admin/ban            ★   封 IP                             admin-api.ts
+ *   GET    /admin/bans           ★   封禁列表                          admin-api.ts
+ *   DELETE /admin/ban/:ip_hash   ★   解封                              admin-api.ts
+ *   GET    /admin/mod-log        ★   操作审计日志                       mod-log.ts
+ *   GET    /admin/export         ★   导出（备份/迁移）                   admin-api.ts
+ *   POST   /admin/import         ★   导入                              admin-api.ts
+ *   POST   /admin/bulk/approve   ★   批量批准                          admin-api.ts
+ *   POST   /admin/rebuild        ★   手动触发重建                       admin-api.ts
+ *   POST   /admin/classify       ★   试跑 AI 分类（调试用）              classify.ts
+ *   DELETE /admin/gdpr/:ip_hash  ★   按 IP 删除（GDPR 被遗忘权）         admin-api.ts
+ *   POST   /admin/pause/:slug    ★   暂停某一页的评论                   内联
+ *   DELETE /admin/pause/:slug    ★   恢复某一页的评论                   内联
+ *   其它   任意                      静态资源（有 ASSETS 时）+ 即时预览   html-rewriter.ts
  *
  * 【加新端点时的注意事项】
  *   - 要鉴权的端点【必须放在 /admin/ 下】，否则 addSecurityHeaders() 不会
  *     给它加 no-store / noindex / DENY 那套保护。
- *   - /approve /reject /spam 这几个例外：它们是 /admin/ 之外的管理端点，
- *     历史原因保留了短路径。**这是可以优化的地方** —— 你可以把它们收敛到
- *     /admin/ 下，和其余管理端点统一。
- *   - 路由用正则逐个匹配，不是路由表。**加很多端点时这里会变长，
- *     可以考虑改成一个 (method, pattern, handler) 数组。**
+ *   - ⚠ 但 /approve /reject /spam /unapprove /comments 这几个管理端点挂在
+ *     /admin/ 之外（历史原因），所以**拿不到那套安全头**。这是本项目一个
+ *     可以改进的地方：把它们收敛到 /admin/ 下。
+ *   - /admin/ 之下的端点各自负责调 requireAuth()（本文件里只有 /admin/rebuild
+ *     和 /admin/classify 是内联处理的，其余在各自模块里鉴权）。
+ *     ⚠ 新增管理端点时【极易忘记鉴权】—— 这是最需要小心的一类改动。
+ *   - 路由是一长串手写的 if/match，端点多了会难维护。
+ *     ★ 可以考虑改成 (method, pattern, handler) 的数组表。
  */
 async function route(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
