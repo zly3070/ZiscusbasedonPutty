@@ -1,0 +1,102 @@
+# ============================================================================
+# worker/wrangler.test.toml —— 测试专用的 Wrangler 配置
+# ============================================================================
+#
+# 【为什么需要单独一份，而不是直接用 wrangler.toml】
+#
+# wrangler.toml 里有这一段：
+#     [ai]
+#     binding = "AI_MOD"
+#
+# 单独跑 `wrangler dev` 时它是合理的（本地能用真的 Workers AI）。
+# 但在【测试】环境里它会造成一个实际问题，实测观察到的现象：
+#
+#   · index.test.ts 里走 `SELF.fetch("/submit")` 的那几个测试，用的是
+#     真实 env（不是单个测试自己构造的 mock env），于是**真的去请求
+#     Cloudflare 的 AI 服务**
+#   · 未登录时会触发 wrangler 的 OAuth 登录流程，它监听 localhost:8976
+#     等回调；浏览器打不开 → **测试被挂住**，实测 250 个测试只跑到 129 个
+#   · console 里反复出现：
+#         [ziscus] AI classification failed: Error: Not logged in.
+#   · 每次还要白等 classify.ts 里的 3 秒 AI_TIMEOUT_MS
+#
+# 【为什么不能"给它一个本地的假实现"】
+#
+# 人家查过 miniflare 的源码（dist/src/index.d.ts 里的 AIOptionsSchema）：
+#
+#     ai?: {
+#       binding: string;
+#       remoteProxyConnectionString: ...    ← 必须连远端
+#     }
+#
+# **miniflare 的 AI 绑定没有本地实现**，它只能把请求代理到 Cloudflare
+# 真实 API。所以"注入一个假的 AI_MOD 对象"在配置层面做不到：
+#   · bindings 里传 undefined  → 报 "Unexpected pool options"
+#   · bindings 里传带 run() 的对象 → 同样报错
+#     （因为 miniflare 的 bindings 是【数据绑定】，必须可 JSON 序列化，
+#       函数保留不下来）
+#
+# 所以唯一可行的办法就是：**让测试环境压根不创建这个绑定。**
+# 这就需要一份不含 [ai] 的 wrangler 配置 —— 也就是本文件。
+#
+# 【去掉 AI 绑定后，测试会怎样】
+#
+#   classifyComment() 的第一个判断就是：
+#       if (!env.AI_MOD) return "approve";
+#   于是立刻返回 "approve"，不再发起任何网络请求。
+#
+# ⚠ 会不会丢失测试覆盖？不会：
+#   AI 分类的【确定性行为】由 index.test.ts 的
+#   "AI moderation security model" 一组测试覆盖，它们自己注入 mock：
+#       envWithAI("spam") → { AI_MOD: { run: async () => ({ response: "spam" }) } }
+#   直接调 handleSubmit(request, mockEnv)，完全不依赖这个真绑定。
+#   classify.test.ts 同样是自己 mock 的。
+#
+#   也就是说：真实 AI 调用路径本来就没有被【有意义地】测试覆盖，
+#   只是被"碰巧能连通"覆盖了 —— 那种覆盖既不确定、又慢、还会产生计费。
+#
+# 【改完之后，那两个走 SELF 的测试会走 "no AI" 分支】
+#
+#   它们的断言是宽松的（expect([200, 303]).toContain(res.status)）或
+#   只看数据库里的记录，所以在没有 AI 的情况下依然成立，而且变成
+#   【确定性】的：MODERATION=off → 直接 approved。
+#
+# ============================================================================
+# 以下内容与 wrangler.toml 保持一致，唯一区别是【没有 [ai] 段】
+# ============================================================================
+
+# Dev/test config for this repository. Consumers don't use this file — they
+# write their own wrangler.toml against the published `ziscus/worker` bundle
+# (see README → "1. Deploy the Worker").
+name = "ziscus-test"
+main = "src/index.ts"
+compatibility_date = "2025-09-27"
+
+# Tiny fixture site so the flash-cookie / paused-slug HTMLRewriter paths are
+# exercised end-to-end in tests.
+[assets]
+directory = "test/site"
+binding = "ASSETS"
+run_worker_first = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ziscus-comments"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+
+[vars]
+ALLOWED_ORIGINS = "example.com"
+MODERATION = "off"
+RATE_LIMIT = "30"
+GITHUB_REPO = "you/your-site-repo"
+
+# ⚠ 刻意【没有 [ai] 段】—— 见上面的说明。
+#   如果你确实需要测试真实 AI，把下面两行的注释去掉，
+#   并接受测试需要 `wrangler login`、会走网络、会产生用量计费：
+#
+# [ai]
+# binding = "AI_MOD"
+
+# Secrets — set via `wrangler secret put`, never commit values:
+# ADMIN_SECRET — for approving/rejecting comments
+# GITHUB_TOKEN — for repository_dispatch rebuild triggers

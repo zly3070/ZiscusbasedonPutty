@@ -28,12 +28,12 @@
 
 TypeScript 里出现的每一个名字，都来自下面四类之一：
 
-| 类别 | 例子 | 靠什么拿到 |
-|---|---|---|
-| ① **语言内置** | `string` `number` `if` `function` | 永远有 |
-| ② **运行环境** | `URL` `console` `setTimeout` | `tsconfig.json` 的 `"lib"` |
-| ③ **第三方包** | `Request` `Response` `D1Database` `Fetcher` `Ai` | **需要 `pnpm install`** |
-| ④ **项目自己** | `Env` `Comment` `RebuildResult` | 本项目的 `types.ts` |
+| 类别           | 例子                                             | 靠什么拿到                 |
+| -------------- | ------------------------------------------------ | -------------------------- |
+| ① **语言内置** | `string` `number` `if` `function`                | 永远有                     |
+| ② **运行环境** | `URL` `console` `setTimeout`                     | `tsconfig.json` 的 `"lib"` |
+| ③ **第三方包** | `Request` `Response` `D1Database` `Fetcher` `Ai` | **需要 `pnpm install`**    |
+| ④ **项目自己** | `Env` `Comment` `RebuildResult`                  | 本项目的 `types.ts`        |
 
 **⭐ 遇到「找不到名称 XXX」时，先问：XXX 属于哪一类？**
 
@@ -43,12 +43,12 @@ TypeScript 里出现的每一个名字，都来自下面四类之一：
 
 ### 关键认知：波浪线 ≠ 代码不能跑
 
-| | 类型检查（波浪线） | 实际运行 |
-|---|---|---|
-| 谁在做 | 编辑器 / TypeScript 编译器 | Cloudflare 运行时 |
-| 何时 | 你写代码时 | 访客访问时 |
-| `Request` 从哪来 | 需要 `.d.ts` 类型文件 | **运行时本来就提供** |
-| 报红的后果 | 只是提示 | **完全不影响运行** |
+|                  | 类型检查（波浪线）         | 实际运行             |
+| ---------------- | -------------------------- | -------------------- |
+| 谁在做           | 编辑器 / TypeScript 编译器 | Cloudflare 运行时    |
+| 何时             | 你写代码时                 | 访客访问时           |
+| `Request` 从哪来 | 需要 `.d.ts` 类型文件      | **运行时本来就提供** |
+| 报红的后果       | 只是提示                   | **完全不影响运行**   |
 
 **为什么运行时不需要类型** —— 因为**类型在编译时会被全部擦掉**：
 
@@ -85,13 +85,13 @@ packages:
 
 **装完后的变化**：
 
-| 变化 | 意义 |
-|---|---|
-| 出现 `node_modules/` | 依赖就位 |
-| 波浪线消失 | 类型找到了 |
-| 能跑 `pnpm test` | 项目自带测试终于可跑 |
-| 能跑 `pnpm typecheck` | 真正的类型检查 |
-| 打 `request.` 有补全 | **对写代码帮助最大** |
+| 变化                  | 意义                 |
+| --------------------- | -------------------- |
+| 出现 `node_modules/`  | 依赖就位             |
+| 波浪线消失            | 类型找到了           |
+| 能跑 `pnpm test`      | 项目自带测试终于可跑 |
+| 能跑 `pnpm typecheck` | 真正的类型检查       |
+| 打 `request.` 有补全  | **对写代码帮助最大** |
 
 ## 0.2 网络问题（国内环境必读）
 
@@ -205,25 +205,25 @@ async  fetch  (  request: Request ,  env: Env  )  :  Promise<Response>  {
  ①      ②         ③        ④           ⑤    ⑥         ⑦
 ```
 
-| # | 代码 | 意思 |
-|---|---|---|
-| ① | `async` | 「这个函数里会有 `await`」 |
-| ② | `fetch` | **函数名，Cloudflare 规定的，不能改** |
-| ③ | `request` | 参数名，装着访客的请求 |
-| ④ | `: Request` | **类型标注，运行时不存在** |
-| ⑤ | `env` | 参数名，装着所有外部资源 |
-| ⑥ | `: Env` | 类型标注（`Env` 定义在 `types.ts`） |
-| ⑦ | `: Promise<Response>` | 返回一个 Response，但要等一下 |
+| #   | 代码                  | 意思                                  |
+| --- | --------------------- | ------------------------------------- |
+| ①   | `async`               | 「这个函数里会有 `await`」            |
+| ②   | `fetch`               | **函数名，Cloudflare 规定的，不能改** |
+| ③   | `request`             | 参数名，装着访客的请求                |
+| ④   | `: Request`           | **类型标注，运行时不存在**            |
+| ⑤   | `env`                 | 参数名，装着所有外部资源              |
+| ⑥   | `: Env`               | 类型标注（`Env` 定义在 `types.ts`）   |
+| ⑦   | `: Promise<Response>` | 返回一个 Response，但要等一下         |
 
 **⭐ 读代码的技巧：把 ④⑥⑦ 全部划掉，剩下的就是真正运行的东西。**
 
 ### 三个语法点
 
-| 写法 | 含义 | 注意 |
-|---|---|---|
-| `a.b` | 取 `a` 里面的 `b` | 点号 = 「里面的」 |
-| `===` | 判断相等 | ⚠️ **三个等号**。`==` 会做类型转换，坑多，别用 |
-| `return` | 立刻返回，函数结束 | 后面的代码**不再执行** |
+| 写法     | 含义               | 注意                                           |
+| -------- | ------------------ | ---------------------------------------------- |
+| `a.b`    | 取 `a` 里面的 `b`  | 点号 = 「里面的」                              |
+| `===`    | 判断相等           | ⚠️ **三个等号**。`==` 会做类型转换，坑多，别用 |
+| `return` | 立刻返回，函数结束 | 后面的代码**不再执行**                         |
 
 **⭐ 「提前 return」是后端代码最常见的写法** —— 用来一层层筛掉不需要处理的请求。
 `route()` 里有几十个这样的 `if`。
@@ -234,18 +234,18 @@ async  fetch  (  request: Request ,  env: Env  )  :  Promise<Response>  {
 const isAdmin = new URL(request.url).pathname.startsWith("/admin/");
 ```
 
-| 部分 | 意思 |
-|---|---|
-| `const isAdmin` | 声明变量（不能重新赋值；`let` 可以） |
-| `new URL(...)` | 造一个 URL 对象 |
-| `request.url` | 完整网址，如 `https://x.com/admin/stats?limit=5` |
-| `.pathname` | **只取路径部分** → `/admin/stats` |
-| `.startsWith("/admin/")` | 判断是否以某段文字开头 → `true` / `false` |
+| 部分                     | 意思                                             |
+| ------------------------ | ------------------------------------------------ |
+| `const isAdmin`          | 声明变量（不能重新赋值；`let` 可以）             |
+| `new URL(...)`           | 造一个 URL 对象                                  |
+| `request.url`            | 完整网址，如 `https://x.com/admin/stats?limit=5` |
+| `.pathname`              | **只取路径部分** → `/admin/stats`                |
+| `.startsWith("/admin/")` | 判断是否以某段文字开头 → `true` / `false`        |
 
 **自己试试**（浏览器 F12 → Console）：
 
 ```js
-new URL("https://x.com/admin/stats?limit=5").pathname
+new URL("https://x.com/admin/stats?limit=5").pathname;
 ```
 
 ### `await` 为什么必须写
@@ -272,26 +272,26 @@ const res = await route(request, env);
 
 **读代码的一半能力在于「知道什么可以先跳过」。**
 
-| 位置 | 内容 | 为什么跳过 |
-|---|---|---|
-| 第 3-150 行 | `dashboardRedirect`、`addSecurityHeaders` 实现 | 工具函数，用时知道「它加工响应」即可 |
-| 第 153-193 行 | 路由表大注释 | 当字典查 |
-| 第 194-410 行 | `route()` 里几十个 `if` | **结构完全一样**，认一个就会认全部 |
-| 所有 `try / catch` | 错误处理 | 后面单独讲 |
+| 位置               | 内容                                           | 为什么跳过                           |
+| ------------------ | ---------------------------------------------- | ------------------------------------ |
+| 第 3-150 行        | `dashboardRedirect`、`addSecurityHeaders` 实现 | 工具函数，用时知道「它加工响应」即可 |
+| 第 153-193 行      | 路由表大注释                                   | 当字典查                             |
+| 第 194-410 行      | `route()` 里几十个 `if`                        | **结构完全一样**，认一个就会认全部   |
+| 所有 `try / catch` | 错误处理                                       | 后面单独讲                           |
 
 **⭐ 读代码不是从第一行读到最后一行，而是先找骨架，再按需深入。**
 
 ## 1.4 HTTP 状态码速查
 
-| 码 | 意思 | 什么时候用 |
-|---|---|---|
-| **200** | 成功 | 正常返回内容 |
-| **302** | 临时跳转 | 让浏览器换地址 |
+| 码      | 意思               | 什么时候用                         |
+| ------- | ------------------ | ---------------------------------- |
+| **200** | 成功               | 正常返回内容                       |
+| **302** | 临时跳转           | 让浏览器换地址                     |
 | **303** | 跳转（方法变 GET） | **表单提交后跳转（本项目大量用）** |
-| **401** | 没认证 | 密码不对 |
-| **403** | 禁止 | 不允许这么做 |
-| **404** | 找不到 | 没有这个页面 |
-| **500** | 服务器出错 | 代码崩了 |
+| **401** | 没认证             | 密码不对                           |
+| **403** | 禁止               | 不允许这么做                       |
+| **404** | 找不到             | 没有这个页面                       |
+| **500** | 服务器出错         | 代码崩了                           |
 
 ## 1.5 改动任务 ①：首页跳转到管理面板
 
@@ -318,20 +318,25 @@ async function route(request: Request, env: Env): Promise<Response> {
 ```ts
 if (path === "/" && request.method === "GET") {
 ```
-| 部分 | 意思 |
-|---|---|
-| `path === "/"` | 路径正好是首页 |
-| `&&` | 「并且」，两边都真才成立 |
+
+| 部分                       | 意思                       |
+| -------------------------- | -------------------------- |
+| `path === "/"`             | 路径正好是首页             |
+| `&&`                       | 「并且」，两边都真才成立   |
 | `request.method === "GET"` | 这是普通访问，不是提交表单 |
 
 ```ts
-return new Response(null, { status: 302, headers: { Location: "/admin/dashboard" } });
+return new Response(null, {
+  status: 302,
+  headers: { Location: "/admin/dashboard" },
+});
 ```
-| 部分 | 意思 |
-|---|---|
-| `new Response(...)` | 造一个响应 |
-| `null` | 响应内容。跳转不需要内容 |
-| `{ status: 302 }` | 302 = 临时跳转 |
+
+| 部分                | 意思                                 |
+| ------------------- | ------------------------------------ |
+| `new Response(...)` | 造一个响应                           |
+| `null`              | 响应内容。跳转不需要内容             |
+| `{ status: 302 }`   | 302 = 临时跳转                       |
 | `{ Location: ... }` | **跳转的暗号**，告诉浏览器去这个地址 |
 
 **⚠️ 两个提醒**：
@@ -357,20 +362,21 @@ node --experimental-vm-modules notes/tscheck.mjs worker/src/index.ts
 ## 2.1 `interface` = 描述形状
 
 ```ts
-export interface Env {      // ← 「我要描述一种叫 Env 的东西」
-  DB: D1Database;           // ← 「它有一个属性叫 DB，类型是 D1Database」
-  ASSETS?: Fetcher;         // ← 「它有一个【可选】属性 ASSETS」
-  ADMIN_SECRET?: string;    // ← ← 你问的 D1Database 就在这里被用到
-  MODERATION: string;       // ← 「这个一定要有」
+export interface Env {
+  // ← 「我要描述一种叫 Env 的东西」
+  DB: D1Database; // ← 「它有一个属性叫 DB，类型是 D1Database」
+  ASSETS?: Fetcher; // ← 「它有一个【可选】属性 ASSETS」
+  ADMIN_SECRET?: string; // ← ← 你问的 D1Database 就在这里被用到
+  MODERATION: string; // ← 「这个一定要有」
   RATE_LIMIT?: string;
 }
 ```
 
-| 写法 | 意思 | 大白话 |
-|---|---|---|
-| `DB: D1Database` | 属性 `DB`，类型 `D1Database` | 「DB 是个数据库」 |
-| `ASSETS?: Fetcher` | **`?` = 可选** | 「可能有，也可能没有」 |
-| `MODERATION: string` | 没有 `?` = 必需 | 「一定要有」 |
+| 写法                 | 意思                         | 大白话                 |
+| -------------------- | ---------------------------- | ---------------------- |
+| `DB: D1Database`     | 属性 `DB`，类型 `D1Database` | 「DB 是个数据库」      |
+| `ASSETS?: Fetcher`   | **`?` = 可选**               | 「可能有，也可能没有」 |
+| `MODERATION: string` | 没有 `?` = 必需              | 「一定要有」           |
 
 ## 2.2 ⭐ `?` 是理解这个项目的关键
 
@@ -386,13 +392,13 @@ if (!env.ADMIN_SECRET) return 401;        // auth.ts
 
 **对照表**：
 
-| 属性 | 有 `?` 吗 | 代码里有判空吗 |
-|---|---|---|
-| `ASSETS?: Fetcher` | ✅ 可选 | ✅ `if (!env.ASSETS)` |
-| `AI_MOD?: Ai` | ✅ 可选 | ✅ `if (!env.AI_MOD)` |
-| `ADMIN_SECRET?: string` | ✅ 可选 | ✅ `if (!env.ADMIN_SECRET)` |
-| `MODERATION: string` | ❌ 必需 | ❌ 直接用 |
-| `DB: D1Database` | ❌ 必需 | ❌ 直接用 |
+| 属性                    | 有 `?` 吗 | 代码里有判空吗              |
+| ----------------------- | --------- | --------------------------- |
+| `ASSETS?: Fetcher`      | ✅ 可选   | ✅ `if (!env.ASSETS)`       |
+| `AI_MOD?: Ai`           | ✅ 可选   | ✅ `if (!env.AI_MOD)`       |
+| `ADMIN_SECRET?: string` | ✅ 可选   | ✅ `if (!env.ADMIN_SECRET)` |
+| `MODERATION: string`    | ❌ 必需   | ❌ 直接用                   |
+| `DB: D1Database`        | ❌ 必需   | ❌ 直接用                   |
 
 **⭐ 规律：**
 
@@ -424,36 +430,75 @@ if (!env.ADMIN_SECRET) return 401;        // auth.ts
 
 ## 后续课程计划
 
-| 课 | 文件 | 会学到 | 改动任务 |
-|---|---|---|---|
-| 3 | `worker/src/html.ts` | 纯函数、字符串处理、正则 | 加一个转义字符 |
-| 4 | `worker/src/auth.ts` | 请求头、401 | 加一个备用密码 |
-| 5 | `worker/src/structural-filter.ts` | 正则、数组遍历、`if` 链 | 加一条过滤规则 |
-| 6 | `worker/src/rate-limit.ts` | 第一次碰 SQL、原子操作 | 改限流次数 |
-| 7 | `worker/src/submit.ts` | 主流程串联 | 改提交后的跳转 |
-| 8 | 回到 `worker/src/index.ts` | 此时能全看懂 | 加一个新端点 |
+| 课  | 文件                              | 会学到                   | 改动任务       |
+| --- | --------------------------------- | ------------------------ | -------------- |
+| 3   | `worker/src/html.ts`              | 纯函数、字符串处理、正则 | 加一个转义字符 |
+| 4   | `worker/src/auth.ts`              | 请求头、401              | 加一个备用密码 |
+| 5   | `worker/src/structural-filter.ts` | 正则、数组遍历、`if` 链  | 加一条过滤规则 |
+| 6   | `worker/src/rate-limit.ts`        | 第一次碰 SQL、原子操作   | 改限流次数     |
+| 7   | `worker/src/submit.ts`            | 主流程串联               | 改提交后的跳转 |
+| 8   | 回到 `worker/src/index.ts`        | 此时能全看懂             | 加一个新端点   |
 
 ## 常用命令速查
 
 ```powershell
-# 语法检查（人家写的检查器）
+# ─── 装依赖（只需一次；源已写进项目 .npmrc，不必再加 --registry）──────
+pnpm install
+
+# ─── 三个层级的验证，从松到严 ─────────────────────────────────────────
+#
+# ① 只查语法（最快，~1 秒）—— 改完一个文件立刻用
 node --experimental-vm-modules notes/tscheck.mjs worker/src/index.ts
-
-# 装依赖（国内镜像）
-pnpm install --registry=https://registry.npmmirror.com
-
-# 跑测试（需要先装依赖）
-pnpm test
-
-# 类型检查（需要先装依赖，比 tscheck 严格）
+#
+# ② 查类型（~2.6 秒）—— 会检查"用得对不对"，比上面严格
+#    ⚠ 必须从【项目根目录】跑，它会同时检查 worker 和 embed 两个包
 pnpm typecheck
+#
+# ③ 跑测试（~9 秒）—— 最接近真相，验证"跑起来对不对"
+pnpm test
+```
+
+### ⚠️ 关于 `pnpm` 命令曾经会"突然下载几百 MB"
+
+**实测已解决**，但原因值得记住 —— 当时同时存在两个问题：
+
+1. `node_modules` 处于**半装状态**（安装被中断过，`typescript` 等包没下全）
+2. 项目里**没有 `.npmrc`**，所以 pnpm 按默认的 `registry.npmjs.org`
+   去校验，而那个源在国内连不上、缓存也被判定为"来源不匹配"
+
+于是 pnpm 认为"全都没装"，把几百 MB 全部重下。
+
+**根因不是 `pnpm exec` / `pnpm --dir` 本身有问题** —— 任何 pnpm 命令
+在那种状态下都会触发重装。现在 `.npmrc` 已写死镜像源、依赖也装完整了，
+下面这几条**实测都正常、都不再触发下载**：
+
+| 命令 | 位置 | 耗时 | 结果 |
+| --- | --- | --- | --- |
+| `pnpm typecheck` | 项目根 | 2.6 秒 | ✅ 两包都过 |
+| `pnpm --dir worker exec tsc --noEmit` | 项目根 | 1.6 秒 | ✅ 退出码 0 |
+| `.\node_modules\.bin\tsc.cmd --noEmit` | worker 目录 | 1.1 秒 | ✅ 退出码 0 |
+
+**三个验证手段的分工（很重要）：**
+
+```
+tscheck.mjs   →  只查【语法】     （写得对不对）
+tsc --noEmit  →  查【类型】       （用得对不对）   ← 更严格
+vitest run    →  查【行为】       （跑起来对不对） ← 最接近真相
+```
+
+**推荐节奏：**
+
+```
+改完一个文件  →  tscheck.mjs      （1 秒，马上知道有没有写错）
+改完一批      →  pnpm typecheck   （2.6 秒）
+准备提交      →  pnpm test        （9 秒）
 ```
 
 ## 人家为这个项目留下的辅助文件
 
-| 文件 | 用途 |
-|---|---|
-| `notes/tscheck.mjs` | TS 语法 + 模块可加载性检查器 |
-| `notes/verify-html-escape.mjs` | 验证 HTML 转义行为 |
-| `notes/verify-unescape-step-by-step.mjs` | 逐步观察 `&amp;lt;` 怎么被解码 |
-| `notes/verify-unescape-rule-order.mjs` | 穷举 120 种规则顺序，验证 `&amp;` 必须最后解 |
+| 文件                                     | 用途                                         |
+| ---------------------------------------- | -------------------------------------------- |
+| `notes/tscheck.mjs`                      | TS 语法 + 模块可加载性检查器                 |
+| `notes/verify-html-escape.mjs`           | 验证 HTML 转义行为                           |
+| `notes/verify-unescape-step-by-step.mjs` | 逐步观察 `&amp;lt;` 怎么被解码               |
+| `notes/verify-unescape-rule-order.mjs`   | 穷举 120 种规则顺序，验证 `&amp;` 必须最后解 |

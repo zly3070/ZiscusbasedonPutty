@@ -1,3 +1,48 @@
 packages:
   - worker
   - embed
+
+# ============================================================================
+# allowBuilds —— 允许哪些依赖执行它们自己的安装脚本（postinstall）
+# ============================================================================
+#
+# 【为什么需要这一段】
+#
+# pnpm 10+ 出于【供应链安全】考虑，默认**不执行**依赖包自带的 postinstall
+# 脚本 —— 因为 postinstall 能运行任意代码，是供应链攻击最常见的载体。
+#
+# 但下面这三个包恰恰依赖 postinstall 来准备原生二进制：
+#
+#   esbuild   打包器（tsdown 依赖它）
+#   sharp     图像处理（本项目部分工具链会用到）
+#   workerd   ★ Cloudflare 的运行时 —— `wrangler dev` 与本地测试全靠它
+#
+# 之前它们被跳过时，pnpm 会在安装结束打印：
+#     ✗ Ignored build scripts: esbuild@..., sharp@..., workerd@...
+#
+# 【为什么设成 true 是安全的】
+#
+#   · 这三个都是 Cloudflare 官方工具链的直接依赖，来源可信
+#   · 它们的平台专用包（@cloudflare/workerd-windows-64、
+#     @img/sharp-win32-x64、@esbuild/win32-x64）本来就会被正常安装，
+#     真正的二进制在里面 —— 实测 tsc / vitest / wrangler 都能正常工作
+#   · 设为 true 只是让 pnpm 不再报那个警告，并允许它们完成脚本步骤
+#
+# 【如果你以后要加新的包】
+#
+#   ⚠ 不要习惯性地把新包也设成 true。每加一个都要问：
+#     "这个包我真的需要它执行脚本吗？它可信吗？"
+#     postinstall 是攻击面，能不加就不加。
+#
+# 【这个文件本身是做什么的（给初学者）】
+#
+#   它声明这是一个 monorepo（单仓库多包）：
+#     根目录 /pnpm-workspace.yaml   ← 你在这里
+#       ├── worker/                 一个子包
+#       └── embed/                  另一个子包
+#   所以在根目录跑一次 `pnpm install`，就会装好两个子包的依赖。
+# ============================================================================
+allowBuilds:
+  esbuild: true
+  sharp: true
+  workerd: true
