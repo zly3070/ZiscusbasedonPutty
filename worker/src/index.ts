@@ -7,7 +7,7 @@
  *
  *   ┌──────────────┐  ① 访客用纯 HTML 表单 POST /submit
  *   │ 访客的浏览器 │ ─────────────────────────────────────┐
- *   └──────────────┘                                      ▼
+ *   └──────────────┘                                     ▼
  *   ┌──────────────────────────────────────────────────────────────┐
  *   │              这个 Worker（Cloudflare 边缘节点）                │
  *   │                                                              │
@@ -21,9 +21,9 @@
  *                               ▼
  *                        Cloudflare D1（SQLite）
  *
- *   ┌────────────────┐  ② 构建时：SSG 调 fetchComments() 把评论烘焙进 HTML
+ *   ┌─────────────────┐  ② 构建时：SSG 调 fetchComments() 把评论烘焙进 HTML
  *   │ 你的静态站点生成器│ ────────────────────────────────────────────┐
- *   └────────────────┘                                              ▼
+ *   └─────────────────┘                                              ▼
  *                                                         发布的静态 HTML
  *                                              （访客读到的是纯静态页面，零 JS）
  *
@@ -142,12 +142,19 @@ function addSecurityHeaders(res: Response, isAdmin: boolean): Response {
   // Admin pages are authenticated and private: use the strictest referrer policy
   // (don't even leak the bare origin), and keep them out of any search index or
   // shared cache — defense in depth for the admin surface.
-  headers.set("Referrer-Policy", isAdmin ? "no-referrer" : "strict-origin-when-cross-origin");
+  headers.set(
+    "Referrer-Policy",
+    isAdmin ? "no-referrer" : "strict-origin-when-cross-origin",
+  );
   if (isAdmin) {
     headers.set("X-Robots-Tag", "noindex, nofollow");
     headers.set("Cache-Control", "no-store");
   }
-  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+  return new Response(res.body, {
+    status: res.status,
+    statusText: res.statusText,
+    headers,
+  });
 }
 
 /**
@@ -213,7 +220,10 @@ async function route(request: Request, env: Env): Promise<Response> {
   if (request.method === "OPTIONS") {
     const isAdmin = path.startsWith("/admin/");
     const allowedOrigin = isAdmin
-      ? (env.ALLOWED_ORIGINS ?? "").split(",").map((h) => h.trim()).filter(Boolean)[0] ?? ""
+      ? ((env.ALLOWED_ORIGINS ?? "")
+          .split(",")
+          .map((h) => h.trim())
+          .filter(Boolean)[0] ?? "")
       : "*";
     return new Response(null, {
       status: 204,
@@ -237,8 +247,10 @@ async function route(request: Request, env: Env): Promise<Response> {
   // DELETE /comments/:id — permanent delete (admin)
   const commentsMatch = path.match(/^\/comments\/([a-z0-9-]+)\/?$/);
   if (commentsMatch) {
-    if (request.method === "GET") return handleGetComments(commentsMatch[1]!, env);
-    if (request.method === "DELETE") return handleDeleteComment(commentsMatch[1]!, request, env);
+    if (request.method === "GET")
+      return handleGetComments(commentsMatch[1]!, env);
+    if (request.method === "DELETE")
+      return handleDeleteComment(commentsMatch[1]!, request, env);
   }
 
   // POST /approve/:id
@@ -270,17 +282,28 @@ async function route(request: Request, env: Env): Promise<Response> {
 
   // /admin/* — authenticated management endpoints
   if (path.startsWith("/admin/")) {
-    if (path === "/admin/dashboard" && request.method === "GET") return handleDashboard(request, env);
-    if (path === "/admin/stats" && request.method === "GET") return handleGetStats(request, env);
-    if (path === "/admin/comments" && request.method === "GET") return handleListComments(request, env);
-    if (path === "/admin/mode" && request.method === "POST") return handleSetMode(request, env);
-    if (path === "/admin/mode" && request.method === "GET") return handleGetMode(request, env);
-    if (path === "/admin/ban" && request.method === "POST") return handleBanIp(request, env);
-    if (path === "/admin/bans" && request.method === "GET") return handleListBans(request, env);
-    if (path === "/admin/mod-log" && request.method === "GET") return handleGetModLog(request, env);
-    if (path === "/admin/export" && request.method === "GET") return handleExport(request, env);
-    if (path === "/admin/import" && request.method === "POST") return handleImport(request, env);
-    if (path === "/admin/bulk/approve" && request.method === "POST") return handleBulkApprove(request, env);
+    if (path === "/admin/dashboard" && request.method === "GET")
+      return handleDashboard(request, env);
+    if (path === "/admin/stats" && request.method === "GET")
+      return handleGetStats(request, env);
+    if (path === "/admin/comments" && request.method === "GET")
+      return handleListComments(request, env);
+    if (path === "/admin/mode" && request.method === "POST")
+      return handleSetMode(request, env);
+    if (path === "/admin/mode" && request.method === "GET")
+      return handleGetMode(request, env);
+    if (path === "/admin/ban" && request.method === "POST")
+      return handleBanIp(request, env);
+    if (path === "/admin/bans" && request.method === "GET")
+      return handleListBans(request, env);
+    if (path === "/admin/mod-log" && request.method === "GET")
+      return handleGetModLog(request, env);
+    if (path === "/admin/export" && request.method === "GET")
+      return handleExport(request, env);
+    if (path === "/admin/import" && request.method === "POST")
+      return handleImport(request, env);
+    if (path === "/admin/bulk/approve" && request.method === "POST")
+      return handleBulkApprove(request, env);
     if (path === "/admin/rebuild" && request.method === "POST") {
       const res = await handleRebuild(request, env);
       return dashboardRedirect(request, res, { alsoOn: (s) => s >= 500 });
@@ -289,19 +312,26 @@ async function route(request: Request, env: Env): Promise<Response> {
     if (path === "/admin/classify" && request.method === "POST") {
       const authErr = requireAuth(request, env);
       if (authErr) return authErr;
-      const { author, body } = await request.json() as { author?: string; body?: string };
-      if (!author || !body) return new Response("Missing author or body", { status: 400 });
+      const { author, body } = (await request.json()) as {
+        author?: string;
+        body?: string;
+      };
+      if (!author || !body)
+        return new Response("Missing author or body", { status: 400 });
       const classification = await classifyComment(author, body, env);
       return new Response(JSON.stringify({ classification }), {
-        status: 200, headers: { "Content-Type": "application/json" },
+        status: 200,
+        headers: { "Content-Type": "application/json" },
       });
     }
 
     const unbanMatch = path.match(/^\/admin\/ban\/([a-z0-9]+)\/?$/);
-    if (unbanMatch && request.method === "DELETE") return handleUnbanIp(unbanMatch[1]!, request, env);
+    if (unbanMatch && request.method === "DELETE")
+      return handleUnbanIp(unbanMatch[1]!, request, env);
 
     const gdprMatch = path.match(/^\/admin\/gdpr\/([^/]+)\/?$/);
-    if (gdprMatch && request.method === "DELETE") return handleGdprDelete(gdprMatch[1]!, request, env);
+    if (gdprMatch && request.method === "DELETE")
+      return handleGdprDelete(gdprMatch[1]!, request, env);
 
     // Per-slug pause: POST to pause, DELETE to reopen
     const pauseMatch = path.match(/^\/admin\/pause\/([a-z0-9-]+)\/?$/);
@@ -310,12 +340,24 @@ async function route(request: Request, env: Env): Promise<Response> {
       if (authErr) return authErr;
       const pauseSlug = pauseMatch[1]!;
       if (request.method === "POST") {
-        await env.DB.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES (?, '1')").bind(`slug_paused:${pauseSlug}`).run();
-        return new Response(JSON.stringify({ ok: true, slug: pauseSlug, paused: true }), { status: 200, headers: { "Content-Type": "application/json" } });
+        await env.DB.prepare(
+          "INSERT OR REPLACE INTO meta (key, value) VALUES (?, '1')",
+        )
+          .bind(`slug_paused:${pauseSlug}`)
+          .run();
+        return new Response(
+          JSON.stringify({ ok: true, slug: pauseSlug, paused: true }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
       }
       if (request.method === "DELETE") {
-        await env.DB.prepare("DELETE FROM meta WHERE key = ?").bind(`slug_paused:${pauseSlug}`).run();
-        return new Response(JSON.stringify({ ok: true, slug: pauseSlug, paused: false }), { status: 200, headers: { "Content-Type": "application/json" } });
+        await env.DB.prepare("DELETE FROM meta WHERE key = ?")
+          .bind(`slug_paused:${pauseSlug}`)
+          .run();
+        return new Response(
+          JSON.stringify({ ok: true, slug: pauseSlug, paused: false }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
       }
     }
   }
@@ -345,10 +387,18 @@ async function route(request: Request, env: Env): Promise<Response> {
   const flashMatch = cookies.match(/ziscus_posted=([a-z0-9-]+)/);
   if (flashMatch && env.ASSETS && request.method === "GET") {
     const slug = flashMatch[1]!;
-    const original = await serveWithFreshComments(slug, url.pathname, request, env);
+    const original = await serveWithFreshComments(
+      slug,
+      url.pathname,
+      request,
+      env,
+    );
     // Build new response with mutable headers to clear the flash cookie
     const headers = new Headers(original.headers);
-    headers.set("Set-Cookie", "ziscus_posted=; Max-Age=0; Path=/; SameSite=Lax; Secure; HttpOnly");
+    headers.set(
+      "Set-Cookie",
+      "ziscus_posted=; Max-Age=0; Path=/; SameSite=Lax; Secure; HttpOnly",
+    );
     return new Response(original.body, { status: original.status, headers });
   }
 
@@ -374,9 +424,12 @@ async function route(request: Request, env: Env): Promise<Response> {
         "SELECT key FROM meta WHERE key LIKE 'slug_paused:%'",
       ).all<{ key: string }>();
       if (results && results.length > 0) {
-        const pausedSlugs = new Set(results.map((r) => r.key.replace("slug_paused:", "")));
+        const pausedSlugs = new Set(
+          results.map((r) => r.key.replace("slug_paused:", "")),
+        );
         let formIsPaused = false;
-        const pausedMsg = '<p style="color: var(--color-muted, #888); font-style: italic; margin: 1rem 0;">Comments are paused on this page.</p>';
+        const pausedMsg =
+          '<p style="color: var(--color-muted, #888); font-style: italic; margin: 1rem 0;">Comments are paused on this page.</p>';
         const rewritten = new HTMLRewriter()
           .on(".comment-form input[name='slug']", {
             element(el) {
@@ -423,11 +476,16 @@ async function route(request: Request, env: Env): Promise<Response> {
  *   记得也要在那里考虑安全头。
  */
 export default {
+  // export default 将包含的内容作为本文件的默认导出
+  // Cloudflare 规定：你的入口文件必须导出这样一个对象，里面含 fetch 方法。 这就是平台找你的方式。
   async fetch(request: Request, env: Env): Promise<Response> {
+    // :Request是类型名，运行时不存在，所谓typescripts
     // CORS 预检：直接返回，不加安全头（预检响应越简单越好，避免多余的头干扰浏览器判断）
     if (request.method === "OPTIONS") return route(request, env);
+    // === 严格相等，== 会做类型转换
     const isAdmin = new URL(request.url).pathname.startsWith("/admin/");
     const res = await route(request, env);
+    // 因为route是async函数，不会立刻给答案，所以await等待
     return addSecurityHeaders(res, isAdmin);
   },
 };

@@ -108,6 +108,20 @@ export interface RebuildResult {
   error?: string;
 }
 
+// export 暴露该接口，使得其他文件能够import到；interface 定义一个名叫Comment的接口
+// ?:表示该属性是可选项；相对的，:的属性是在描述对象时的必选项
+// 网络编程中后端的核心是一个函数：收到Request,返回Response
+
+// async function handleSubmit(request: Request, env: Env): Promise<Response> {
+//   // ... 干点什么
+//   return new Response("成功了", { status: 200 });
+
+// 譬如当前函数的意思是接受Request类型的request参数和Env类型的参数env，返回一个Promise预期的Response
+// 具体来说是async声明了这是一个异步函数，Promise<Response>：声明这个函数返回一个 Promise，而这个 Promise 最终会解析出一个 Response 对象。
+// 因为 async 函数不会立刻返回值，可能要等数据库查询、等网络请求、等文件读写等…所以返回的是承诺，现在虽然还没有结果，但是承诺将来会给你Response。
+// const response = await handleSubmit(request, env); 会等Promise解析完，把里面的Response拿出来。
+// => 是便携函数的建法
+
 /**
  * 一条评论（驼峰命名，用于 API 出参）。
  *
