@@ -502,3 +502,12 @@ vitest run    →  查【行为】       （跑起来对不对） ← 最接近�
 | `notes/verify-html-escape.mjs`           | 验证 HTML 转义行为                           |
 | `notes/verify-unescape-step-by-step.mjs` | 逐步观察 `&amp;lt;` 怎么被解码               |
 | `notes/verify-unescape-rule-order.mjs`   | 穷举 120 种规则顺序，验证 `&amp;` 必须最后解 |
+
+---
+
+## 📖 课程文件
+
+- 第 1 课、第 2 课 —— 就在本文件里（见上面的目录）
+- **第 3 课：`html.ts`** —— 见 [LESSON-03-html.md](./LESSON-03-html.md)
+  （纯函数、正则入门、以及"链式替换的顺序为什么重要"）
+
