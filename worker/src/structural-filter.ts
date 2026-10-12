@@ -47,7 +47,8 @@ export interface FilterResult {
  * 为什么限制数量而不是完全禁止：某些正常场景（如阿拉伯语/希伯来语混排）
  * 会合法用到方向标记。所以允许少量、拦截滥用。
  */
-const INVISIBLE_RE = /[\u200B\u200C\u200D\u200E\u200F\u2060\u2061\u2062\u2063\u2064\uFEFF\u202A-\u202E]/g;
+const INVISIBLE_RE =
+  /[\u200B\u200C\u200D\u200E\u200F\u2060\u2061\u2062\u2063\u2064\uFEFF\u202A-\u202E]/g;
 
 /**
  * 不可见字符的容忍上限。
@@ -55,6 +56,8 @@ const INVISIBLE_RE = /[\u200B\u200C\u200D\u200E\u200F\u2060\u2061\u2062\u2063\u2
  *   但如果你的读者群大量使用双向文字（阿拉伯语、希伯来语），
  *   可能需要调高。★ 这是自定义时值得关注的旋钮。
  */
+
+// 好多些不可见字符，需要过滤吗？
 const MAX_INVISIBLE_CHARS = 5;
 
 /**
@@ -62,6 +65,7 @@ const MAX_INVISIBLE_CHARS = 5;
  * 拦的是"aaaaaaaa…"这类填充/噪声。
  * ⚠ 门槛取 20 而不是 5，是为了不误杀正常的语气强化（"好—————"）。
  */
+// 杀掉超过及20个连续的字符
 const REPETITION_RE = /(.)\1{19,}/;
 
 /**
@@ -72,6 +76,7 @@ const REPETITION_RE = /(.)\1{19,}/;
  * ⚠ 最后的 `[+]\d` 是专门为 "+1" 这种网络用语开的口子 ——
  *   否则纯 "+1" 的评论会因为不含两个连续字母而被拦。
  */
+// 过滤单个数字等类似的信息，但是我怀疑其必要性
 const HAS_WORD_RE = /[\p{L}\p{N}]{2,}|[+]\d/u;
 
 /**
@@ -84,6 +89,7 @@ const HAS_WORD_RE = /[\p{L}\p{N}]{2,}|[+]\d/u;
 const MAX_TOKEN_LENGTH = 200;
 
 /** 判断一个 token 是不是 URL（用于豁免长度限制） */
+// URL前缀PREFIX
 const URL_PREFIX_RE = /^https?:\/\//;
 
 /**
@@ -105,7 +111,7 @@ export function structuralFilter(author: string, body: string): FilterResult {
     return { blocked: true, reason: "Null bytes are not allowed" };
   }
 
-  // 2. Invisible unicode abuse — text obfuscation
+  // 2. Invisible unicode abuse — text obfuscation 文本混淆
   const invisibleCount = (combined.match(INVISIBLE_RE) ?? []).length;
   if (invisibleCount > MAX_INVISIBLE_CHARS) {
     return { blocked: true, reason: "Too many invisible unicode characters" };
@@ -116,12 +122,13 @@ export function structuralFilter(author: string, body: string): FilterResult {
     return { blocked: true, reason: "Excessive character repetition" };
   }
 
-  // 4. No word-like content — pure symbols / gibberish
+  // 4. No word-like content — pure symbols / gibberish 单字符或是无意义
   if (!HAS_WORD_RE.test(body)) {
     return { blocked: true, reason: "Comment must contain word-like content" };
   }
 
-  // 5. Long unbroken tokens — encoded/binary payloads (skip URLs)
+  // 5. Long unbroken tokens — encoded/binary payloads (skip URLs) 过长
+  // 根据任意字符切片
   const tokens = body.split(/\s+/);
   for (const token of tokens) {
     if (token.length > MAX_TOKEN_LENGTH && !URL_PREFIX_RE.test(token)) {
