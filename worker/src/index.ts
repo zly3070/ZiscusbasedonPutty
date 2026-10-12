@@ -480,7 +480,7 @@ export default {
   // Cloudflare 规定：你的入口文件必须导出这样一个对象，里面含 fetch 方法。 这就是平台找你的方式。
   async fetch(request: Request, env: Env): Promise<Response> {
     // :Request是类型名，运行时不存在，所谓typescripts
-    // CORS 预检：直接返回，不加安全头（预检响应越简单越好，避免多余的头干扰浏览器判断）
+    // CORS 预检：直接返回，不加安全s头（预检响应越简单越好，避免多余的头干扰浏览器判断）
     if (request.method === "OPTIONS") return route(request, env);
     // === 严格相等，== 会做类型转换
     const isAdmin = new URL(request.url).pathname.startsWith("/admin/");
