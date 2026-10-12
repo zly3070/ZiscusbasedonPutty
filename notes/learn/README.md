@@ -512,4 +512,6 @@ vitest run    →  查【行为】       （跑起来对不对） ← 最接近�
   （纯函数、正则入门、以及"往返测试为什么值钱"）
 - **第 4 课：`auth.ts`** —— 见 [LESSON-04-auth.md](./LESSON-04-auth.md)
   （请求头、`Response | null` 约定、以及"没有测试覆盖的安全代码"实测）
+- **第 5 课：`structural-filter.ts`** —— 见 [LESSON-05-structural-filter.md](./LESSON-05-structural-filter.md)
+  （「检查站链」这个通用模式、`.test()` vs `.match()`、阈值边界）
 
